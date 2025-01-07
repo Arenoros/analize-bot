@@ -59,9 +59,23 @@ def insert_v2(values):
         service = build('sheets', 'v4', credentials=credentials)
         #print("Авторизация прошла успешно!")
         # Отправка запроса
+        spreadsheet_metadata = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+        sheets = spreadsheet_metadata.get('sheets', [])
+        if not sheets:
+            return "Таблица не найдена"
+        
+        sheet_name=''
+        for sheet in sheets:
+            if sheet['properties']['sheetId'] == SHEET_ID:
+                sheet_name = sheet['properties']['title']
+                break
+            
+        if not sheet_name:
+            return "Лист не найден"
+        
         response = service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEET_ID,
-            range="Лист2!A1:ZZZ1"
+            range=f"{sheet_name}!A1:ZZZ1"
         ).execute()
         if "values" not in response:
             return "Таблица для вставки не найдена"
@@ -90,6 +104,17 @@ def insert_v2(values):
 
         data = {
             "requests": [
+                 {    
+                    "insertDimension": {
+                        "range": {
+                            "sheetId": SHEET_ID,  # Замените на ваш sheetId
+                            "dimension": "COLUMNS",  # Указываем, что добавляем столбец
+                            "startIndex": pos,  # Индекс, начиная с которого добавить (нумерация с 0)
+                            "endIndex": pos + 1   # Индекс, до которого добавить (в данном случае добавляем 1 столбец)
+                        },
+                        "inheritFromBefore": True  # Унаследовать форматирование от предыдущего столбца (True или False)
+                    }
+                },
                 # Копирование форматирования
                 {
                     "copyPaste": {
