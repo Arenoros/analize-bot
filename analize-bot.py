@@ -6,8 +6,9 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from googleapiclient.discovery import build
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import configparser
+from prettytable import PrettyTable
 
 blood_components = [
     "Лейкоциты",
@@ -174,18 +175,27 @@ async def load_analyze(pdf_path) -> str:
                 if len(row) == 4:
                     match = pattern.search(row[0])
                     if match and len(row[1]) > 0:
-                        results[match.group()] = row[1] #float(row[1].replace(',', '.'))
+                        results[match.group()] = (row[1], row[3]) #float(row[1].replace(',', '.'))
 
-    
-    # results["АКН"] = results["Лейкоциты"]/100*(results["Палочкоядерные"]+results["Сегментоядерные"])
-    akn = float(results["Лейкоциты"].replace(',', '.'))/100*(int(results["Палочкоядерные"])+int(results["Сегментоядерные"]))
+    akn = float(results["Лейкоциты"][0].replace(',', '.'))/100*(int(results["Палочкоядерные"][0])+int(results["Сегментоядерные"][0]))
     values = [date]
     message = f'Данные от {date}: \n'
+
+    table = PrettyTable()
+    table.align = "l"
+    table.field_names = ["Параметр", "Значение", "Норма"]
+
+    # Добавляем строки
+
     for component in blood_components: 
         if component in results:
-            values.append(results[component])
-            message += f'{component}: {results[component]}\n'
-    message += f'АКН: {akn}\n'
+            values.append(results[component][0])
+            table.add_row([component, results[component][0], results[component][1]])
+            #message += f'{component}: {results[component]}\n'
+    
+    table.add_row(['АКН', str(akn).replace('.', ','), ''])
+    message += f'<code>\n{table}\n</code>\n'
+
     os.remove(pdf_path)
     message += insert_v2(values)
     return message
@@ -207,7 +217,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         message = await load_analyze(path)
         print(message)
         # Уведомляем пользователя
-        await update.message.reply_text(message)
+        await update.message.reply_html(message)
 
 def main():
     TG_TOKEN = config['Bot']["tg_token"]
