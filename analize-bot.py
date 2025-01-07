@@ -33,7 +33,7 @@ config = configparser.ConfigParser()
 config.read("config.ini")
 GAPI_PKEY       = config['Bot']["gapi_json_key"]
 SPREADSHEET_ID  = config['Bot']["g_table_id"]
-SHEET_ID        = config['Bot']["g_sheet_id"]
+SHEET_ID        = str(config['Bot']["g_sheet_id"])
 
 def insert_v1(values):
     # Настройка доступа
@@ -66,10 +66,11 @@ def insert_v2(values):
         
         sheet_name=''
         for sheet in sheets:
-            if sheet['properties']['sheetId'] == SHEET_ID:
+            cur = str(sheet.get('properties', {}).get('sheetId', ''))
+            if cur == SHEET_ID:
                 sheet_name = sheet['properties']['title']
                 break
-            
+        
         if not sheet_name:
             return "Лист не найден"
         
@@ -77,8 +78,10 @@ def insert_v2(values):
             spreadsheetId=SPREADSHEET_ID,
             range=f"{sheet_name}!A1:ZZZ1"
         ).execute()
+
         if "values" not in response:
             return "Таблица для вставки не найдена"
+        
         dates = response["values"][0]
         if values[0] in dates:
             return "Данные за эту дату уже добавлены"
@@ -207,8 +210,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text(message)
 
 def main():
-    TG_TOKEN        = config['Bot']["tg_token"]
-
+    TG_TOKEN = config['Bot']["tg_token"]
     application = Application.builder().token(TG_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.Document.PDF, handle_document))
