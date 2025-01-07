@@ -1,0 +1,14 @@
+[Unit]
+Description=Telegram Bot Service
+After=network.target
+
+[Service]
+User=tgbot
+Group=tgbot
+WorkingDirectory=/opt/analize-bot
+ExecStart=/usr/bin/python3 /opt/analize-bot/analize-bot.py
+Restart=on-failure
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
